@@ -25,6 +25,7 @@ class User(db.Model):
 
     def generate_token(self):
         payload = {
+            'sub': str(self.id),  # Flask-JWT-Extended requires 'sub' claim
             'user_id': self.id,
             'username': self.username,
             'is_admin': self.is_admin,
