@@ -10,7 +10,7 @@ class DigitalProduct(db.Model):
     original_price = db.Column(db.String(20), nullable=True)
     category = db.Column(db.String(50), nullable=False)
     icon = db.Column(db.String(50), nullable=False, default='Monitor')
-    features = db.Column(db.JSON, nullable=False, default=list)
+    features = db.Column(db.JSON, nullable=True, default=list)  # Changed to nullable=True
     rating = db.Column(db.Float, nullable=False, default=4.5)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime, nullable=False, default=db.func.current_timestamp())
@@ -25,7 +25,7 @@ class DigitalProduct(db.Model):
             'original_price': self.original_price,
             'category': self.category,
             'icon': self.icon,
-            'features': self.features,
+            'features': self.features or [],  # Ensure it's always a list
             'rating': self.rating,
             'is_active': self.is_active,
             'created_at': self.created_at.isoformat() if self.created_at else None,

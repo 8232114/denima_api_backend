@@ -38,29 +38,29 @@ def create_digital_product():
         data = request.get_json()
         
         # Log the received data for debugging
-        print(f"Received data: {data}")
+        print(f"Received data for creating product: {data}")
         
         # Validate required fields
         required_fields = ["name", "description", "price", "category"]
         missing_fields = []
         for field in required_fields:
-            if field not in data or not data[field]:
+            if field not in data or not str(data[field]).strip():
                 missing_fields.append(field)
         
         if missing_fields:
+            print(f"Missing required fields: {missing_fields}")
             return jsonify({
                 "success": False,
                 "message": f"Missing required fields: {', '.join(missing_fields)}"
             }), 422
         
-        # Ensure features is a list and filter out empty strings
+        # Process features - ensure it's always a list
         features = data.get("features", [])
-        if isinstance(features, list):
-            features = [f.strip() for f in features if f and f.strip()]
-        else:
+        if not isinstance(features, list):
             features = []
+        features = [str(f).strip() for f in features if f and str(f).strip()]
         
-        # Validate data types and values
+        # Validate and process rating
         try:
             rating = float(data.get("rating", 4.5))
             if rating < 0 or rating > 5:
@@ -68,30 +68,43 @@ def create_digital_product():
         except (ValueError, TypeError):
             rating = 4.5
 
-        # Create new digital product
-        product = DigitalProduct(
-            name=str(data["name"]).strip(),
-            description=str(data["description"]).strip(),
-            price=str(data["price"]).strip(),
-            original_price=str(data.get("original_price", "")).strip() if data.get("original_price") else None,
-            category=str(data["category"]).strip(),
-            icon=str(data.get("icon", "Monitor")).strip(),
-            features=features,
-            rating=rating
-        )
-        
-        db.session.add(product)
-        db.session.commit()
-        
-        return jsonify({
-            "success": True,
-            "message": "Digital product created successfully",
-            "product": product.to_dict()
-        }), 201
+        # Create new digital product with explicit field assignment
+        try:
+            product = DigitalProduct()
+            product.name = str(data["name"]).strip()
+            product.description = str(data["description"]).strip()
+            product.price = str(data["price"]).strip()
+            product.original_price = str(data.get("original_price", "")).strip() if data.get("original_price") else None
+            product.category = str(data["category"]).strip()
+            product.icon = str(data.get("icon", "Monitor")).strip()
+            product.features = features
+            product.rating = rating
+            product.is_active = True
+            
+            print(f"Creating product with features: {product.features}")
+            
+            db.session.add(product)
+            db.session.commit()
+            
+            print(f"Product created successfully with ID: {product.id}")
+            
+            return jsonify({
+                "success": True,
+                "message": "Digital product created successfully",
+                "product": product.to_dict()
+            }), 201
+            
+        except Exception as db_error:
+            db.session.rollback()
+            print(f"Database error during product creation: {str(db_error)}")
+            return jsonify({
+                "success": False,
+                "message": f"Database error: {str(db_error)}"
+            }), 500
         
     except Exception as e:
         db.session.rollback()
-        print(f"Error creating digital product: {str(e)}")
+        print(f"General error creating digital product: {str(e)}")
         return jsonify({
             "success": False,
             "message": f"Error creating digital product: {str(e)}"
@@ -126,53 +139,65 @@ def update_digital_product(product_id):
         # Validate required fields if they are provided
         required_fields = ["name", "description", "price", "category"]
         for field in required_fields:
-            if field in data and not data[field]:
+            if field in data and not str(data[field]).strip():
+                print(f"Field '{field}' is empty")
                 return jsonify({
                     "success": False,
                     "message": f"Field '{field}' cannot be empty"
                 }), 422
         
-        # Update fields with proper validation
-        if "name" in data:
-            product.name = str(data["name"]).strip()
-        if "description" in data:
-            product.description = str(data["description"]).strip()
-        if "price" in data:
-            product.price = str(data["price"]).strip()
-        if "original_price" in data:
-            product.original_price = str(data["original_price"]).strip() if data["original_price"] else None
-        if "category" in data:
-            product.category = str(data["category"]).strip()
-        if "icon" in data:
-            product.icon = str(data["icon"]).strip()
-        if "features" in data:
-            # Ensure features is a list and filter out empty strings
-            features = data.get("features", [])
-            if isinstance(features, list):
-                product.features = [f.strip() for f in features if f and f.strip()]
-            else:
-                product.features = []
-        if "rating" in data:
-            try:
-                rating = float(data["rating"])
-                if 0 <= rating <= 5:
-                    product.rating = rating
-            except (ValueError, TypeError):
-                pass  # Keep existing rating if invalid
-        if "is_active" in data:
-            product.is_active = bool(data["is_active"])
-        
-        db.session.commit()
-        
-        return jsonify({
-            "success": True,
-            "message": "Digital product updated successfully",
-            "product": product.to_dict()
-        }), 200
+        try:
+            # Update fields with proper validation
+            if "name" in data:
+                product.name = str(data["name"]).strip()
+            if "description" in data:
+                product.description = str(data["description"]).strip()
+            if "price" in data:
+                product.price = str(data["price"]).strip()
+            if "original_price" in data:
+                product.original_price = str(data["original_price"]).strip() if data["original_price"] else None
+            if "category" in data:
+                product.category = str(data["category"]).strip()
+            if "icon" in data:
+                product.icon = str(data["icon"]).strip()
+            if "features" in data:
+                # Process features - ensure it's always a list
+                features = data.get("features", [])
+                if not isinstance(features, list):
+                    features = []
+                product.features = [str(f).strip() for f in features if f and str(f).strip()]
+                print(f"Updated features: {product.features}")
+            if "rating" in data:
+                try:
+                    rating = float(data["rating"])
+                    if 0 <= rating <= 5:
+                        product.rating = rating
+                except (ValueError, TypeError):
+                    pass  # Keep existing rating if invalid
+            if "is_active" in data:
+                product.is_active = bool(data["is_active"])
+            
+            print(f"About to commit update for product {product_id}")
+            db.session.commit()
+            print(f"Product {product_id} updated successfully")
+            
+            return jsonify({
+                "success": True,
+                "message": "Digital product updated successfully",
+                "product": product.to_dict()
+            }), 200
+            
+        except Exception as db_error:
+            db.session.rollback()
+            print(f"Database error during product update: {str(db_error)}")
+            return jsonify({
+                "success": False,
+                "message": f"Database error: {str(db_error)}"
+            }), 500
         
     except Exception as e:
         db.session.rollback()
-        print(f"Error updating digital product: {str(e)}")
+        print(f"General error updating digital product: {str(e)}")
         return jsonify({
             "success": False,
             "message": f"Error updating digital product: {str(e)}"
