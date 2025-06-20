@@ -347,5 +347,98 @@ def create_menu_section():
             "message": f"Error creating menu section: {str(e)}"
         }), 500
 
+@digital_product_bp.route("/menu-sections/<int:section_id>", methods=["PUT"])
+@jwt_required()
+def update_menu_section(section_id):
+    """Update a menu section (Admin only)"""
+    try:
+        # Check if user is admin
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        if not user or not user.is_admin:
+            return jsonify({
+                "success": False,
+                "message": "Admin access required"
+            }), 403
+        
+        section = MenuSection.query.get(section_id)
+        if not section:
+            return jsonify({
+                "success": False,
+                "message": "Menu section not found"
+            }), 404
+        
+        data = request.get_json()
+        
+        # Update fields
+        if "name" in data:
+            section.name = data["name"]
+        if "label_ar" in data:
+            section.label_ar = data["label_ar"]
+        if "label_en" in data:
+            section.label_en = data["label_en"]
+        if "icon" in data:
+            section.icon = data["icon"]
+        if "path" in data:
+            section.path = data["path"]
+        if "action" in data:
+            section.action = data["action"]
+        if "order_index" in data:
+            section.order_index = data["order_index"]
+        if "is_active" in data:
+            section.is_active = data["is_active"]
+        
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "Menu section updated successfully",
+            "section": section.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "success": False,
+            "message": f"Error updating menu section: {str(e)}"
+        }), 500
+
+@digital_product_bp.route("/menu-sections/<int:section_id>", methods=["DELETE"])
+@jwt_required()
+def delete_menu_section(section_id):
+    """Delete a menu section (Admin only)"""
+    try:
+        # Check if user is admin
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        if not user or not user.is_admin:
+            return jsonify({
+                "success": False,
+                "message": "Admin access required"
+            }), 403
+        
+        section = MenuSection.query.get(section_id)
+        if not section:
+            return jsonify({
+                "success": False,
+                "message": "Menu section not found"
+            }), 404
+        
+        # Soft delete by setting is_active to False
+        section.is_active = False
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "Menu section deleted successfully"
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "success": False,
+            "message": f"Error deleting menu section: {str(e)}"
+        }), 500
+
 
 
