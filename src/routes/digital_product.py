@@ -21,6 +21,45 @@ def get_digital_products():
             "message": f"Error fetching digital products: {str(e)}"
         }), 500
 
+@digital_product_bp.route("/digital-products/test", methods=["POST"])
+@jwt_required()
+def test_digital_product():
+    """Test endpoint for debugging digital product creation"""
+    try:
+        # Check if user is admin
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        if not user or not user.is_admin:
+            return jsonify({
+                "success": False,
+                "message": "Admin access required"
+            }), 403
+        
+        data = request.get_json()
+        
+        # Log everything for debugging
+        print(f"=== TEST ENDPOINT ===")
+        print(f"Raw request data: {data}")
+        print(f"Request headers: {dict(request.headers)}")
+        print(f"Request method: {request.method}")
+        print(f"Request content type: {request.content_type}")
+        
+        # Return the received data for inspection
+        return jsonify({
+            "success": True,
+            "message": "Test endpoint - data received successfully",
+            "received_data": data,
+            "user_id": current_user_id,
+            "user_is_admin": user.is_admin if user else False
+        }), 200
+        
+    except Exception as e:
+        print(f"Error in test endpoint: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Test endpoint error: {str(e)}"
+        }), 500
+
 @digital_product_bp.route("/digital-products", methods=["POST"])
 @jwt_required()
 def create_digital_product():
