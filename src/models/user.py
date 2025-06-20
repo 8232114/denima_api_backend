@@ -30,16 +30,25 @@ class User(db.Model):
             'is_admin': self.is_admin,
             'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7)
         }
-        return jwt.encode(payload, current_app.config['SECRET_KEY'], algorithm='HS256')
+        # Use JWT_SECRET_KEY instead of SECRET_KEY for consistency
+        secret_key = current_app.config.get('JWT_SECRET_KEY', current_app.config['SECRET_KEY'])
+        return jwt.encode(payload, secret_key, algorithm='HS256')
 
     @staticmethod
     def verify_token(token):
         try:
-            payload = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
+            # Use JWT_SECRET_KEY instead of SECRET_KEY for consistency
+            secret_key = current_app.config.get('JWT_SECRET_KEY', current_app.config['SECRET_KEY'])
+            payload = jwt.decode(token, secret_key, algorithms=['HS256'])
             return payload
         except jwt.ExpiredSignatureError:
+            print("JWT Error: Token has expired")
             return None
-        except jwt.InvalidTokenError:
+        except jwt.InvalidTokenError as e:
+            print(f"JWT Error: Invalid token - {str(e)}")
+            return None
+        except Exception as e:
+            print(f"JWT Error: Unexpected error - {str(e)}")
             return None
 
     def to_dict(self):

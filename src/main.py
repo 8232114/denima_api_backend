@@ -17,7 +17,7 @@ from src.routes.digital_product import digital_product_bp
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
-app.config['JWT_SECRET_KEY'] = 'jwt-secret-string-change-this-in-production'
+app.config['JWT_SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'  # Use same key for consistency
 
 # Initialize JWT
 jwt = JWTManager(app)
