@@ -5,6 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from flask import Flask, send_from_directory
 from flask_cors import CORS
+from flask_jwt_extended import JWTManager
 from src.models.user import db, User, Service
 # Import offer models after user models to ensure proper foreign key resolution
 from src.models.offer import Offer, OfferProduct
@@ -16,6 +17,10 @@ from src.routes.digital_product import digital_product_bp
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
+app.config['JWT_SECRET_KEY'] = 'jwt-secret-string-change-this-in-production'
+
+# Initialize JWT
+jwt = JWTManager(app)
 
 # Enable CORS
 CORS(app)
