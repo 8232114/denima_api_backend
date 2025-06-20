@@ -8,8 +8,11 @@ from flask_cors import CORS
 from src.models.user import db, User, Service
 # Import offer models after user models to ensure proper foreign key resolution
 from src.models.offer import Offer, OfferProduct
+# Import digital product models
+from src.models.digital_product import DigitalProduct, MenuSection
 from src.routes.user import user_bp
 from src.routes.offer import offer_bp
+from src.routes.digital_product import digital_product_bp
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
@@ -19,6 +22,7 @@ CORS(app)
 
 app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(offer_bp, url_prefix='/api')
+app.register_blueprint(digital_product_bp, url_prefix='/api')
 
 # Database configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'database', 'app.db')}"
@@ -145,6 +149,113 @@ def create_default_data():
             db.session.add(offer_product)
         
         print("Created default offer with first 4 services")
+    
+    # Create default digital products if none exist
+    if DigitalProduct.query.count() == 0:
+        digital_products = [
+            {
+                'name': 'Netflix Premium',
+                'description': 'حساب Netflix مميز لمدة شهر كامل مع إمكانية المشاهدة بجودة 4K',
+                'price': '$15',
+                'original_price': '$25',
+                'category': 'streaming',
+                'icon': 'Monitor',
+                'features': [
+                    'جودة 4K',
+                    'مشاهدة على 4 أجهزة',
+                    'محتوى حصري',
+                    'بدون إعلانات'
+                ],
+                'rating': 4.9
+            },
+            {
+                'name': 'Spotify Premium',
+                'description': 'استمتع بالموسيقى بدون إعلانات مع جودة عالية',
+                'price': '$12',
+                'original_price': '$20',
+                'category': 'music',
+                'icon': 'Headphones',
+                'features': [
+                    'بدون إعلانات',
+                    'جودة عالية',
+                    'تحميل للاستماع بدون إنترنت',
+                    'قوائم تشغيل مخصصة'
+                ],
+                'rating': 4.8
+            },
+            {
+                'name': 'PlayStation Plus',
+                'description': 'اشتراك PlayStation Plus مع ألعاب مجانية شهرية',
+                'price': '$20',
+                'original_price': '$30',
+                'category': 'gaming',
+                'icon': 'Gamepad2',
+                'features': [
+                    'ألعاب مجانية شهرية',
+                    'خصومات حصرية',
+                    'لعب أونلاين',
+                    'تخزين سحابي'
+                ],
+                'rating': 4.7
+            }
+        ]
+        
+        for product_data in digital_products:
+            product = DigitalProduct(**product_data)
+            db.session.add(product)
+        
+        print("Created default digital products")
+    
+    # Create default menu sections if none exist
+    if MenuSection.query.count() == 0:
+        menu_sections = [
+            {
+                'name': 'home',
+                'label_ar': 'الصفحة الرئيسية',
+                'label_en': 'Home',
+                'icon': 'Home',
+                'path': '/',
+                'order_index': 1
+            },
+            {
+                'name': 'offers',
+                'label_ar': 'العروض الخاصة',
+                'label_en': 'Special Offers',
+                'icon': 'Gift',
+                'action': 'scrollToOffers',
+                'order_index': 2
+            },
+            {
+                'name': 'services',
+                'label_ar': 'خدمات الترفيه',
+                'label_en': 'Entertainment Services',
+                'icon': 'Monitor',
+                'action': 'scrollToServices',
+                'order_index': 3
+            },
+            {
+                'name': 'web-design',
+                'label_ar': 'تصميم المواقع',
+                'label_en': 'Web Design',
+                'icon': 'Monitor',
+                'action': 'scrollToWebDesign',
+                'order_index': 4
+            },
+            {
+                'name': 'digital-products',
+                'label_ar': 'المنتجات الرقمية',
+                'label_en': 'Digital Products',
+                'icon': 'Smartphone',
+                'path': '/digital-products',
+                'order_index': 5
+            }
+        ]
+        
+        for section_data in menu_sections:
+            section = MenuSection(**section_data)
+            db.session.add(section)
+        
+        print("Created default menu sections")
     
     db.session.commit()
 
