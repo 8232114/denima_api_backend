@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from flask import Flask, send_from_directory
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
+from werkzeug.security import generate_password_hash
 from src.models.user import db, User, Service
 # Import offer models after user models to ensure proper foreign key resolution
 from src.models.offer import Offer, OfferProduct
@@ -48,9 +49,10 @@ def create_default_data():
         admin = User(
             username='admin',
             email='admin@denima.com',
+            password=generate_password_hash('admin123'),
+            phone='',
             is_admin=True
         )
-        admin.set_password('admin123')  # Default password
         db.session.add(admin)
         print("Created default admin user: admin/admin123")
     
