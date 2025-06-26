@@ -102,12 +102,12 @@ def register():
             print(f"User created successfully with ID: {new_user.id}")
             
             # إنشاء رمز الوصول
-            access_token = create_access_token(identity=new_user.id)
+            access_token = new_user.generate_token()
             print(f"Access token created successfully")
             
             response_data = {
                 'message': 'تم إنشاء الحساب بنجاح',
-                'access_token': access_token,
+                'token': access_token,
                 'user': {
                     'id': new_user.id,
                     'username': new_user.username,
@@ -156,11 +156,11 @@ def login():
             return jsonify({'error': 'اسم المستخدم أو كلمة المرور غير صحيحة'}), 401
         
         # إنشاء رمز الوصول
-        access_token = create_access_token(identity=user.id)
+        access_token = user.generate_token()
         
         return jsonify({
             'message': 'تم تسجيل الدخول بنجاح',
-            'access_token': access_token,
+            'token': access_token,
             'user': {
                 'id': user.id,
                 'username': user.username,
@@ -173,12 +173,25 @@ def login():
         return jsonify({'error': 'حدث خطأ في الخادم'}), 500
 
 @auth_bp.route('/profile', methods=['GET'])
-@jwt_required()
 def get_profile():
     try:
-        current_user_id = get_jwt_identity()
-        user = User.query.get(current_user_id)
+        token = None
+        auth_header = request.headers.get('Authorization')
         
+        if auth_header:
+            try:
+                token = auth_header.split(' ')[1]  # Bearer <token>
+            except IndexError:
+                return jsonify({'error': 'صيغة الرمز المميز غير صحيحة'}), 401
+        
+        if not token:
+            return jsonify({'error': 'الرمز المميز مفقود'}), 401
+        
+        payload = User.verify_token(token)
+        if payload is None:
+            return jsonify({'error': 'الرمز المميز غير صحيح أو منتهي الصلاحية'}), 401
+        
+        user = User.query.get(payload['user_id'])
         if not user:
             return jsonify({'error': 'المستخدم غير موجود'}), 404
         

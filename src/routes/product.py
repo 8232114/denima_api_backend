@@ -19,18 +19,18 @@ def token_required(f):
             try:
                 token = auth_header.split(' ')[1]  # Bearer <token>
             except IndexError:
-                return jsonify({'message': 'Invalid token format'}), 401
+                return jsonify({'message': 'صيغة الرمز المميز غير صحيحة'}), 401
         
         if not token:
-            return jsonify({'message': 'Token is missing'}), 401
+            return jsonify({'message': 'الرمز المميز مفقود'}), 401
         
         payload = User.verify_token(token)
         if payload is None:
-            return jsonify({'message': 'Token is invalid or expired'}), 401
+            return jsonify({'message': 'الرمز المميز غير صحيح أو منتهي الصلاحية'}), 401
         
         current_user = User.query.get(payload['user_id'])
         if not current_user:
-            return jsonify({'message': 'User not found'}), 401
+            return jsonify({'message': 'المستخدم غير موجود'}), 401
         
         return f(current_user, *args, **kwargs)
     
@@ -95,7 +95,7 @@ def create_product(current_user):
         required_fields = ['name', 'description', 'price', 'seller_phone']
         for field in required_fields:
             if not data.get(field):
-                return jsonify({'message': f'{field} is required'}), 400
+                return jsonify({'message': f'الحقل {field} مطلوب'}), 400
         
         # إنشاء المنتج
         product = Product(
@@ -111,15 +111,15 @@ def create_product(current_user):
         db.session.commit()
         
         return jsonify({
-            'message': 'Product created successfully',
+            'message': 'تم إنشاء المنتج بنجاح',
             'product': product.to_dict()
         }), 201
         
     except ValueError:
-        return jsonify({'message': 'Invalid price format'}), 400
+        return jsonify({'message': 'صيغة السعر غير صحيحة'}), 400
     except Exception as e:
         db.session.rollback()
-        return jsonify({'message': f'Error creating product: {str(e)}'}), 500
+        return jsonify({'message': f'خطأ في إنشاء المنتج: {str(e)}'}), 500
 
 @product_bp.route('/products/<int:product_id>', methods=['PUT'])
 @token_required
@@ -151,15 +151,15 @@ def update_product(current_user, product_id):
         db.session.commit()
         
         return jsonify({
-            'message': 'Product updated successfully',
+            'message': 'تم تحديث المنتج بنجاح',
             'product': product.to_dict()
         }), 200
         
     except ValueError:
-        return jsonify({'message': 'Invalid price format'}), 400
+        return jsonify({'message': 'صيغة السعر غير صحيحة'}), 400
     except Exception as e:
         db.session.rollback()
-        return jsonify({'message': f'Error updating product: {str(e)}'}), 500
+        return jsonify({'message': f'خطأ في تحديث المنتج: {str(e)}'}), 500
 
 @product_bp.route('/products/<int:product_id>', methods=['DELETE'])
 @token_required
