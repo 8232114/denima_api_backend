@@ -10,7 +10,8 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)
+    password = db.Column(db.String(255), nullable=False)  # Changed from password_hash
+    phone = db.Column(db.String(20), nullable=True)  # Added phone field
     is_admin = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
@@ -18,10 +19,10 @@ class User(db.Model):
         return f'<User {self.username}>'
 
     def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
+        self.password = generate_password_hash(password)
 
     def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
+        return check_password_hash(self.password, password)
 
     def generate_token(self):
         payload = {
@@ -57,6 +58,7 @@ class User(db.Model):
             'id': self.id,
             'username': self.username,
             'email': self.email,
+            'phone': self.phone,
             'is_admin': self.is_admin,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }

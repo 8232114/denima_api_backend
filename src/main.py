@@ -11,9 +11,13 @@ from src.models.user import db, User, Service
 from src.models.offer import Offer, OfferProduct
 # Import digital product models
 from src.models.digital_product import DigitalProduct, MenuSection
+# Import product models for marketplace
+from src.models.product import Product, ProductImage
 from src.routes.user import user_bp
 from src.routes.offer import offer_bp
 from src.routes.digital_product import digital_product_bp
+from src.routes.product import product_bp
+from src.routes.auth import auth_bp
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
@@ -28,6 +32,8 @@ CORS(app)
 app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(offer_bp, url_prefix='/api')
 app.register_blueprint(digital_product_bp, url_prefix='/api')
+app.register_blueprint(product_bp, url_prefix='/api')
+app.register_blueprint(auth_bp, url_prefix='/api/auth')
 
 # Database configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'database', 'app.db')}"
