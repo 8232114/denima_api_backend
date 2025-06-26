@@ -1,4 +1,5 @@
-from src.models.user import db, Service
+from src.extensions import db
+from src.models.user import Service
 
 class Offer(db.Model):
     __tablename__ = 'offers'

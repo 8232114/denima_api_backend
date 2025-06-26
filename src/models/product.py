@@ -1,6 +1,6 @@
-from flask_sqlalchemy import SQLAlchemy
-from src.models.user import db
+from src.extensions import db
 import datetime
+from src.models.user import User
 
 class Product(db.Model):
     __tablename__ = 'products'

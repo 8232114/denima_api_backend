@@ -1,4 +1,4 @@
-from src.models.user import db
+from src.extensions import db
 
 class DigitalProduct(db.Model):
     __tablename__ = 'digital_products'
