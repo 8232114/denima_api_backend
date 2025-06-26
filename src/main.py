@@ -25,6 +25,10 @@ def create_app():
     app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
     app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
     app.config['JWT_SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
+    
+    # File upload configuration
+    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+    app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(__file__), 'static', 'product_images')
 
     # Initialize JWT
     JWTManager(app)
@@ -43,12 +47,14 @@ def create_app():
     from src.routes.digital_product import digital_product_bp
     from src.routes.product import product_bp
     from src.routes.auth import auth_bp
+    from src.routes.admin import admin_bp
 
     app.register_blueprint(user_bp, url_prefix='/api')
     app.register_blueprint(offer_bp, url_prefix='/api')
     app.register_blueprint(digital_product_bp, url_prefix='/api')
     app.register_blueprint(product_bp, url_prefix='/api')
-    app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(auth_bp, url_prefix='/api')
+    app.register_blueprint(admin_bp, url_prefix='/api/admin')
 
     return app
 

@@ -11,6 +11,9 @@ class User(db.Model):
     password = db.Column(db.String(255), nullable=False)  # Changed from password_hash
     phone = db.Column(db.String(20), nullable=True)  # Added phone field
     is_admin = db.Column(db.Boolean, default=False)
+    is_banned = db.Column(db.Boolean, default=False)
+    banned_at = db.Column(db.DateTime, nullable=True)
+    banned_reason = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
     def __repr__(self):
@@ -58,8 +61,23 @@ class User(db.Model):
             'email': self.email,
             'phone': self.phone,
             'is_admin': self.is_admin,
+            'is_banned': self.is_banned,
+            'banned_at': self.banned_at.isoformat() if self.banned_at else None,
+            'banned_reason': self.banned_reason,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
+    
+    def ban_user(self, reason=None):
+        """حظر المستخدم"""
+        self.is_banned = True
+        self.banned_at = datetime.datetime.utcnow()
+        self.banned_reason = reason
+        
+    def unban_user(self):
+        """إلغاء حظر المستخدم"""
+        self.is_banned = False
+        self.banned_at = None
+        self.banned_reason = None
 
 class Service(db.Model):
     __tablename__ = 'services'
