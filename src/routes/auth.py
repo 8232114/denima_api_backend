@@ -9,63 +9,132 @@ auth_bp = Blueprint('auth', __name__)
 @auth_bp.route('/register', methods=['POST'])
 def register():
     try:
+        print("=== REGISTER ENDPOINT CALLED ===")
+        
+        # التحقق من وجود البيانات
+        if not request.is_json:
+            print("ERROR: Request is not JSON")
+            return jsonify({'error': 'يجب أن تكون البيانات بصيغة JSON'}), 400
+        
         data = request.get_json()
         print(f"Received data: {data}")  # Debug print
+        print(f"Data type: {type(data)}")
         
         # التحقق من البيانات المطلوبة
-        if not data or not data.get('username') or not data.get('email') or not data.get('password'):
-            return jsonify({'error': 'جميع الحقول مطلوبة'}), 400
+        if not data:
+            print("ERROR: No data received")
+            return jsonify({'error': 'لم يتم استلام أي بيانات'}), 400
+            
+        required_fields = ['username', 'email', 'password']
+        missing_fields = []
         
-        username = data.get('username')
-        email = data.get('email')
+        for field in required_fields:
+            if not data.get(field):
+                missing_fields.append(field)
+                print(f"ERROR: Missing field: {field}")
+        
+        if missing_fields:
+            return jsonify({'error': f'الحقول التالية مطلوبة: {", ".join(missing_fields)}'}), 400
+        
+        username = data.get('username').strip()
+        email = data.get('email').strip()
         password = data.get('password')
-        phone = data.get('phone', '')
+        phone = data.get('phone', '').strip()
         
-        print(f"Creating user: {username}, {email}")  # Debug print
+        print(f"Processed data - Username: {username}, Email: {email}, Phone: {phone}")
+        
+        # التحقق من صحة البيانات
+        if len(username) < 3:
+            print("ERROR: Username too short")
+            return jsonify({'error': 'اسم المستخدم يجب أن يكون 3 أحرف على الأقل'}), 400
+            
+        if len(password) < 6:
+            print("ERROR: Password too short")
+            return jsonify({'error': 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'}), 400
+        
+        if '@' not in email:
+            print("ERROR: Invalid email format")
+            return jsonify({'error': 'صيغة البريد الإلكتروني غير صحيحة'}), 400
+        
+        print("=== CHECKING EXISTING USERS ===")
         
         # التحقق من وجود المستخدم
-        existing_user = User.query.filter_by(username=username).first()
-        if existing_user:
-            return jsonify({'error': 'اسم المستخدم موجود بالفعل'}), 400
+        try:
+            existing_user = User.query.filter_by(username=username).first()
+            print(f"Existing user check result: {existing_user}")
+            if existing_user:
+                print(f"ERROR: Username {username} already exists")
+                return jsonify({'error': 'اسم المستخدم موجود بالفعل'}), 400
+            
+            existing_email = User.query.filter_by(email=email).first()
+            print(f"Existing email check result: {existing_email}")
+            if existing_email:
+                print(f"ERROR: Email {email} already exists")
+                return jsonify({'error': 'البريد الإلكتروني موجود بالفعل'}), 400
+                
+        except Exception as query_error:
+            print(f"ERROR in database query: {str(query_error)}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'error': 'خطأ في الاستعلام عن قاعدة البيانات'}), 500
         
-        existing_email = User.query.filter_by(email=email).first()
-        if existing_email:
-            return jsonify({'error': 'البريد الإلكتروني موجود بالفعل'}), 400
+        print("=== CREATING NEW USER ===")
         
         # إنشاء مستخدم جديد
-        hashed_password = generate_password_hash(password)
-        new_user = User(
-            username=username,
-            email=email,
-            password=hashed_password,
-            phone=phone
-        )
-        
-        print(f"Adding user to database...")  # Debug print
-        db.session.add(new_user)
-        db.session.commit()
-        print(f"User created successfully with ID: {new_user.id}")  # Debug print
-        
-        # إنشاء رمز الوصول
-        access_token = create_access_token(identity=new_user.id)
-        
-        return jsonify({
-            'message': 'تم إنشاء الحساب بنجاح',
-            'access_token': access_token,
-            'user': {
-                'id': new_user.id,
-                'username': new_user.username,
-                'email': new_user.email,
-                'phone': new_user.phone
+        try:
+            hashed_password = generate_password_hash(password)
+            print(f"Password hashed successfully")
+            
+            new_user = User(
+                username=username,
+                email=email,
+                password=hashed_password,
+                phone=phone
+            )
+            print(f"User object created: {new_user}")
+            
+            print(f"Adding user to database session...")
+            db.session.add(new_user)
+            
+            print(f"Committing to database...")
+            db.session.commit()
+            
+            print(f"User created successfully with ID: {new_user.id}")
+            
+            # إنشاء رمز الوصول
+            access_token = create_access_token(identity=new_user.id)
+            print(f"Access token created successfully")
+            
+            response_data = {
+                'message': 'تم إنشاء الحساب بنجاح',
+                'access_token': access_token,
+                'user': {
+                    'id': new_user.id,
+                    'username': new_user.username,
+                    'email': new_user.email,
+                    'phone': new_user.phone
+                }
             }
-        }), 201
+            
+            print(f"Returning success response: {response_data}")
+            return jsonify(response_data), 201
+            
+        except Exception as create_error:
+            print(f"ERROR in user creation: {str(create_error)}")
+            import traceback
+            traceback.print_exc()
+            db.session.rollback()
+            return jsonify({'error': f'خطأ في إنشاء المستخدم: {str(create_error)}'}), 500
         
     except Exception as e:
-        print(f"Error in register: {str(e)}")  # Debug print
+        print(f"GENERAL ERROR in register: {str(e)}")
         import traceback
-        traceback.print_exc()  # Print full traceback
-        db.session.rollback()
-        return jsonify({'error': f'حدث خطأ في الخادم: {str(e)}'}), 500
+        traceback.print_exc()
+        try:
+            db.session.rollback()
+        except:
+            pass
+        return jsonify({'error': f'حدث خطأ عام في الخادم: {str(e)}'}), 500
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
