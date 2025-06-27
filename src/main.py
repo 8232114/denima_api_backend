@@ -33,8 +33,12 @@ def create_app():
     # Initialize JWT
     JWTManager(app)
 
-    # Enable CORS
-    CORS(app)
+    # Enable CORS with specific configuration
+    CORS(app, 
+         origins=['*'],
+         allow_headers=['Content-Type', 'Authorization'],
+         methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+         supports_credentials=True)
 
     # Database configuration
     app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'database', 'app.db')}"
@@ -82,6 +86,26 @@ with app.app_context():
 @app.route('/')
 def home():
     return "API is running", 200
+
+@app.after_request
+def after_request(response):
+    """Add CORS headers to all responses"""
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response
+
+@app.route('/api/static/product_images/<filename>')
+def serve_product_image(filename):
+    """Serve product images"""
+    from flask import make_response
+    images_dir = os.path.join(os.path.dirname(__file__), 'static', 'product_images')
+    response = make_response(send_from_directory(images_dir, filename))
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    return response
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

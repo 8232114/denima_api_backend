@@ -8,6 +8,15 @@ from functools import wraps
 
 product_bp = Blueprint('product', __name__)
 
+@product_bp.after_request
+def after_request(response):
+    """Add CORS headers to all product route responses"""
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response
+
 # Middleware for authentication
 def token_required(f):
     @wraps(f)
@@ -304,11 +313,6 @@ def delete_product_image(current_user, product_id, image_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': f'Error deleting image: {str(e)}'}), 500
-
-@product_bp.route('/static/product_images/<filename>')
-def serve_product_image(filename):
-    """تقديم صور المنتجات"""
-    return send_from_directory(UPLOAD_FOLDER, filename)
 
 @product_bp.route('/my-products', methods=['GET'])
 @token_required
