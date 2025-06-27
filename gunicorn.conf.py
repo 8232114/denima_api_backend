@@ -1,4 +1,4 @@
-# Gunicorn configuration for Railway deployment
+# Gunicorn configuration for Railway deployment with CORS middleware
 import os
 
 # Server socket
@@ -41,4 +41,7 @@ certfile = None
 raw_env = [
     'FLASK_ENV=production',
 ]
+
+# WSGI module - use our CORS middleware
+wsgi_module = "wsgi:application"
 
