@@ -11,7 +11,7 @@ class CORSMiddleware:
         def new_start_response(status, response_headers):
             # Add CORS headers to every response
             cors_headers = [
-                ('Access-Control-Allow-Origin', '*'),
+                ("Access-Control-Allow-Origin", "https://denimahub.netlify.app"),
                 ('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With'),
                 ('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS'),
                 ('Access-Control-Allow-Credentials', 'true'),
@@ -31,8 +31,8 @@ class CORSMiddleware:
         # Handle OPTIONS requests at WSGI level
         if environ.get('REQUEST_METHOD') == 'OPTIONS':
             response_headers = [
-                ('Content-Type', 'text/plain'),
-                ('Access-Control-Allow-Origin', '*'),
+                ("Content-Type", "text/plain"),
+                ("Access-Control-Allow-Origin", "https://denimahub.netlify.app"),
                 ('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With'),
                 ('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS'),
                 ('Access-Control-Allow-Credentials', 'true'),
