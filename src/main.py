@@ -32,29 +32,45 @@ def create_app():
     # Initialize JWT
     JWTManager(app)
 
-    # Simple and effective CORS configuration
-    # Remove Flask-CORS to avoid conflicts and use manual headers only
+    # Comprehensive CORS configuration with logging
     
     # Global CORS handler for all requests
     @app.after_request
     def after_request(response):
-        """Add CORS headers to all responses"""
+        """Add CORS headers to all responses with logging"""
+        print(f"Adding CORS headers to response for {request.method} {request.path}")
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
         response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
         response.headers['Access-Control-Allow-Credentials'] = 'true'
+        print(f"CORS headers added: {dict(response.headers)}")
         return response
 
-    # Global OPTIONS handler
+    # Enhanced OPTIONS handler
     @app.before_request
     def handle_preflight():
+        print(f"Handling request: {request.method} {request.path}")
         if request.method == "OPTIONS":
+            print("Handling OPTIONS preflight request")
             response = make_response()
             response.headers['Access-Control-Allow-Origin'] = '*'
             response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
             response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
             response.headers['Access-Control-Allow-Credentials'] = 'true'
+            response.status_code = 200
+            print(f"OPTIONS response headers: {dict(response.headers)}")
             return response
+        
+    # Additional CORS route for testing
+    @app.route('/api/cors-test', methods=['GET', 'OPTIONS'])
+    def cors_test():
+        if request.method == 'OPTIONS':
+            response = make_response()
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+            return response
+        return jsonify({"message": "CORS test successful", "status": "ok"})
 
     # Database configuration
     app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'database', 'app.db')}"
@@ -124,5 +140,5 @@ def serve_product_image(filename):
     return response
 
 if __name__ == '__main__':
+    app = create_app()
     app.run(host='0.0.0.0', port=5000, debug=True)
-
