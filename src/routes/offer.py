@@ -7,6 +7,15 @@ import os
 
 offer_bp = Blueprint('offer', __name__)
 
+@offer_bp.after_request
+def after_request(response):
+    """Add CORS headers to all offer route responses"""
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response
+
 def verify_admin_token():
     """Verify admin token and return user"""
     auth_header = request.headers.get('Authorization')
