@@ -4,7 +4,6 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from flask import Flask, send_from_directory, request, make_response
-from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from werkzeug.security import generate_password_hash
 from src.extensions import db
@@ -33,21 +32,17 @@ def create_app():
     # Initialize JWT
     JWTManager(app)
 
-    # Enable CORS with comprehensive configuration
-    CORS(app, 
-         origins=['*'],
-         allow_headers=['Content-Type', 'Authorization', 'Access-Control-Allow-Credentials'],
-         methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-         supports_credentials=True)
-
+    # Simple and effective CORS configuration
+    # Remove Flask-CORS to avoid conflicts and use manual headers only
+    
     # Global CORS handler for all requests
     @app.after_request
     def after_request(response):
         """Add CORS headers to all responses"""
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Access-Control-Allow-Credentials')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
         return response
 
     # Global OPTIONS handler
@@ -55,9 +50,10 @@ def create_app():
     def handle_preflight():
         if request.method == "OPTIONS":
             response = make_response()
-            response.headers.add("Access-Control-Allow-Origin", "*")
-            response.headers.add('Access-Control-Allow-Headers', "Content-Type,Authorization")
-            response.headers.add('Access-Control-Allow-Methods', "GET,PUT,POST,DELETE,OPTIONS")
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
             return response
 
     # Database configuration
