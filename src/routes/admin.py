@@ -1,217 +1,171 @@
-from flask import Blueprint, request, jsonify
-from src.models.user import User, db
-from src.models.product import Product, ProductImage
-from functools import wraps
-import os
+from flask import Blueprint, request, jsonify, session
+from src.models.product import db, Admin
+from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
+import functools
 
 admin_bp = Blueprint('admin', __name__)
 
-# Middleware للتحقق من صلاحيات المسؤول
 def admin_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        token = None
-        auth_header = request.headers.get('Authorization')
-        
-        if auth_header:
-            try:
-                token = auth_header.split(' ')[1]  # Bearer <token>
-            except IndexError:
-                return jsonify({'message': 'صيغة الرمز المميز غير صحيحة'}), 401
-        
-        if not token:
-            return jsonify({'message': 'الرمز المميز مفقود'}), 401
-        
-        payload = User.verify_token(token)
-        if payload is None:
-            return jsonify({'message': 'الرمز المميز غير صحيح أو منتهي الصلاحية'}), 401
-        
-        current_user = User.query.get(payload['user_id'])
-        if not current_user:
-            return jsonify({'message': 'المستخدم غير موجود'}), 401
-            
-        if not current_user.is_admin:
-            return jsonify({'message': 'غير مسموح لك بالوصول لهذه الصفحة'}), 403
-        
-        return f(current_user, *args, **kwargs)
-    
-    return decorated
+    """Decorator to require admin authentication"""
+    @functools.wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'admin_id' not in session:
+            return jsonify({'success': False, 'error': 'Authentication required'}), 401
+        return f(*args, **kwargs)
+    return decorated_function
 
-# إدارة المستخدمين
-@admin_bp.route('/users', methods=['GET'])
-@admin_required
-def get_all_users(current_user):
-    """جلب جميع المستخدمين للمسؤول"""
+@admin_bp.route('/admin/login', methods=['POST'])
+def admin_login():
+    """Admin login"""
     try:
-        users = User.query.all()
-        users_data = []
-        
-        for user in users:
-            user_dict = user.to_dict()
-            # إضافة عدد المنتجات لكل مستخدم
-            user_dict['products_count'] = Product.query.filter_by(seller_id=user.id).count()
-            users_data.append(user_dict)
-        
-        return jsonify({
-            'users': users_data,
-            'total': len(users_data)
-        }), 200
-        
-    except Exception as e:
-        return jsonify({'message': f'خطأ في جلب المستخدمين: {str(e)}'}), 500
-
-@admin_bp.route('/users/<int:user_id>/ban', methods=['POST'])
-@admin_required
-def ban_user(current_user, user_id):
-    """حظر مستخدم"""
-    try:
-        user = User.query.get_or_404(user_id)
-        
-        # منع حظر المسؤولين
-        if user.is_admin:
-            return jsonify({'message': 'لا يمكن حظر المسؤولين'}), 403
-        
-        # منع المستخدم من حظر نفسه
-        if user.id == current_user.id:
-            return jsonify({'message': 'لا يمكنك حظر نفسك'}), 403
-        
         data = request.get_json()
-        reason = data.get('reason', 'لم يتم تحديد السبب')
+        username = data.get('username')
+        password = data.get('password')
         
-        user.ban_user(reason)
-        db.session.commit()
+        if not username or not password:
+            return jsonify({'success': False, 'error': 'Username and password required'}), 400
         
-        return jsonify({
-            'message': f'تم حظر المستخدم {user.username} بنجاح',
-            'user': user.to_dict()
-        }), 200
+        admin = Admin.query.filter_by(username=username, is_active=True).first()
         
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'message': f'خطأ في حظر المستخدم: {str(e)}'}), 500
-
-@admin_bp.route('/users/<int:user_id>/unban', methods=['POST'])
-@admin_required
-def unban_user(current_user, user_id):
-    """إلغاء حظر مستخدم"""
-    try:
-        user = User.query.get_or_404(user_id)
-        
-        user.unban_user()
-        db.session.commit()
-        
-        return jsonify({
-            'message': f'تم إلغاء حظر المستخدم {user.username} بنجاح',
-            'user': user.to_dict()
-        }), 200
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'message': f'خطأ في إلغاء حظر المستخدم: {str(e)}'}), 500
-
-# إدارة المنتجات
-@admin_bp.route('/products', methods=['GET'])
-@admin_required
-def get_all_products_admin(current_user):
-    """جلب جميع المنتجات للمسؤول"""
-    try:
-        products = Product.query.all()
-        products_data = []
-        
-        for product in products:
-            product_dict = product.to_dict()
-            # إضافة معلومات البائع
-            seller = User.query.get(product.seller_id)
-            product_dict['seller'] = {
-                'id': seller.id,
-                'username': seller.username,
-                'email': seller.email,
-                'is_banned': seller.is_banned
-            } if seller else None
-            products_data.append(product_dict)
-        
-        return jsonify({
-            'products': products_data,
-            'total': len(products_data)
-        }), 200
-        
-    except Exception as e:
-        return jsonify({'message': f'خطأ في جلب المنتجات: {str(e)}'}), 500
-
-@admin_bp.route('/products/<int:product_id>', methods=['DELETE'])
-@admin_required
-def delete_product_admin(current_user, product_id):
-    """حذف منتج (للمسؤول فقط)"""
-    try:
-        product = Product.query.get_or_404(product_id)
-        
-        # حذف جميع صور المنتج من النظام
-        for image in product.images:
-            # حذف الملف من النظام
-            if image.image_url:
-                filename = image.image_url.split('/')[-1]
-                file_path = os.path.join('src', 'static', 'product_images', filename)
-                if os.path.exists(file_path):
-                    try:
-                        os.remove(file_path)
-                    except:
-                        pass  # تجاهل أخطاء حذف الملفات
+        if admin and check_password_hash(admin.password_hash, password):
+            session['admin_id'] = admin.id
+            session['admin_username'] = admin.username
             
-            # حذف سجل الصورة من قاعدة البيانات
-            db.session.delete(image)
+            # Update last login
+            admin.last_login = datetime.utcnow()
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': 'Login successful',
+                'admin': admin.to_dict()
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Invalid credentials'}), 401
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/admin/logout', methods=['POST'])
+@admin_required
+def admin_logout():
+    """Admin logout"""
+    try:
+        session.clear()
+        return jsonify({
+            'success': True,
+            'message': 'Logout successful'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/admin/profile', methods=['GET'])
+@admin_required
+def get_admin_profile():
+    """Get current admin profile"""
+    try:
+        admin = Admin.query.get(session['admin_id'])
+        if not admin:
+            return jsonify({'success': False, 'error': 'Admin not found'}), 404
         
-        # حذف المنتج
-        db.session.delete(product)
+        return jsonify({
+            'success': True,
+            'admin': admin.to_dict()
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/admin/create', methods=['POST'])
+def create_admin():
+    """Create a new admin (for initial setup)"""
+    try:
+        data = request.get_json()
+        
+        # Check if any admin exists (for security)
+        existing_admin_count = Admin.query.count()
+        if existing_admin_count > 0:
+            return jsonify({'success': False, 'error': 'Admin creation not allowed'}), 403
+        
+        required_fields = ['username', 'password', 'email']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
+        
+        # Check if username or email already exists
+        if Admin.query.filter_by(username=data['username']).first():
+            return jsonify({'success': False, 'error': 'Username already exists'}), 400
+        
+        if Admin.query.filter_by(email=data['email']).first():
+            return jsonify({'success': False, 'error': 'Email already exists'}), 400
+        
+        admin = Admin(
+            username=data['username'],
+            password_hash=generate_password_hash(data['password']),
+            email=data['email']
+        )
+        
+        db.session.add(admin)
         db.session.commit()
         
         return jsonify({
-            'message': 'تم حذف المنتج بنجاح'
-        }), 200
-        
+            'success': True,
+            'message': 'Admin created successfully',
+            'admin': admin.to_dict()
+        }), 201
     except Exception as e:
         db.session.rollback()
-        return jsonify({'message': f'خطأ في حذف المنتج: {str(e)}'}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
 
-# إحصائيات المسؤول
-@admin_bp.route('/stats', methods=['GET'])
+@admin_bp.route('/admin/dashboard/stats', methods=['GET'])
 @admin_required
-def get_admin_stats(current_user):
-    """جلب إحصائيات شاملة للمسؤول"""
+def get_dashboard_stats():
+    """Get dashboard statistics"""
     try:
-        from datetime import datetime, timedelta
+        from src.models.product import Product, Order
         
-        # إحصائيات المستخدمين
-        total_users = User.query.count()
-        banned_users = User.query.filter_by(is_banned=True).count()
-        admin_users = User.query.filter_by(is_admin=True).count()
+        # Get statistics
+        total_products = Product.query.filter_by(is_active=True).count()
+        total_orders = Order.query.count()
+        pending_orders = Order.query.filter_by(status='pending').count()
+        completed_orders = Order.query.filter_by(status='completed').count()
         
-        # إحصائيات المنتجات
-        total_products = Product.query.count()
-        active_products = Product.query.filter_by(is_active=True).count()
+        # Get recent orders
+        recent_orders = Order.query.order_by(Order.created_at.desc()).limit(5).all()
         
-        # المنتجات الجديدة (آخر 7 أيام)
-        week_ago = datetime.utcnow() - timedelta(days=7)
-        recent_products = Product.query.filter(Product.created_at >= week_ago).count()
+        # Get popular products
+        popular_products = Product.query.filter_by(is_popular=True, is_active=True).limit(5).all()
         
-        # المستخدمين الجدد (آخر 7 أيام)
-        recent_users = User.query.filter(User.created_at >= week_ago).count()
-        
-        stats = {
-            'users': {
-                'total': total_users,
-                'banned': banned_users,
-                'admins': admin_users,
-                'recent': recent_users
+        return jsonify({
+            'success': True,
+            'stats': {
+                'total_products': total_products,
+                'total_orders': total_orders,
+                'pending_orders': pending_orders,
+                'completed_orders': completed_orders
             },
-            'products': {
-                'total': total_products,
-                'active': active_products,
-                'recent': recent_products
-            }
-        }
-        
-        return jsonify(stats), 200
-        
+            'recent_orders': [order.to_dict() for order in recent_orders],
+            'popular_products': [product.to_dict() for product in popular_products]
+        })
     except Exception as e:
-        return jsonify({'message': f'خطأ في جلب الإحصائيات: {str(e)}'}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/admin/check-auth', methods=['GET'])
+def check_admin_auth():
+    """Check if admin is authenticated"""
+    try:
+        if 'admin_id' in session:
+            admin = Admin.query.get(session['admin_id'])
+            if admin and admin.is_active:
+                return jsonify({
+                    'success': True,
+                    'authenticated': True,
+                    'admin': admin.to_dict()
+                })
+        
+        return jsonify({
+            'success': True,
+            'authenticated': False
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
