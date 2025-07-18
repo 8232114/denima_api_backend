@@ -124,7 +124,7 @@ def get_dashboard_stats():
         from src.models.product import Product, Order
         
         # Get statistics
-        total_products = Product.query.filter_by(is_active=True).count()
+        total_products = Product.query.count()
         total_orders = Order.query.count()
         pending_orders = Order.query.filter_by(status='pending').count()
         completed_orders = Order.query.filter_by(status='completed').count()
@@ -168,4 +168,54 @@ def check_admin_auth():
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+
+@admin_bp.route("/admin/products", methods=["GET"])
+@admin_required
+def get_all_products_admin():
+    """Get all products for admin panel (including inactive ones)"""
+    try:
+        products = Product.query.all()
+        return jsonify({
+            "success": True,
+            "products": [product.to_dict() for product in products]
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+
+
+from src.models.user import User
+
+@admin_bp.route("/admin/users/count", methods=["GET"])
+@admin_required
+def get_total_users():
+    """Get total number of users"""
+    try:
+        total_users = User.query.count()
+        return jsonify({
+            "success": True,
+            "total_users": total_users
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@admin_bp.route("/admin/revenue", methods=["GET"])
+@admin_required
+def get_total_revenue():
+    """Get total revenue from completed orders"""
+    try:
+        from src.models.order import Order
+        total_revenue = db.session.query(db.func.sum(Order.total_price)).filter_by(status='completed').scalar()
+        if total_revenue is None:
+            total_revenue = 0
+        return jsonify({
+            "success": True,
+            "total_revenue": float(total_revenue)
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 
