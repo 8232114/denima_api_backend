@@ -9,7 +9,7 @@ from werkzeug.utils import secure_filename
 products_bp = Blueprint('products', __name__)
 
 # Configuration for file uploads
-UPLOAD_FOLDER = 'src/static/uploads'
+UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'static', 'uploads')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 def allowed_file(filename):
